@@ -14,7 +14,7 @@ import {
 import { asideAvailable } from './helpers/aside-available';
 import { installFakeImpeccable, DETECT_SAMPLE } from './helpers/fake-impeccable';
 import { hermeticChildEnv } from './helpers/hermetic-env';
-import { sliceBetween, extractDesignResearchContract } from './helpers/skill-fixture';
+import { sliceBetween, extractDesignResearchContract, readDesignReviewFixture } from './helpers/skill-fixture';
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -762,7 +762,7 @@ afterAll(async () => {
 
 /** design-review's detector prose with the installed bin/lib paths rewritten to this checkout. */
 function detectorSkillText(sections: Array<[string, string]>): string {
-  const full = fs.readFileSync(path.join(ROOT, 'design-review', 'SKILL.md'), 'utf-8');
+  const full = readDesignReviewFixture(path.join(ROOT, 'design-review'));
   return sections.map(([a, b]) => sliceBetween(full, a, b)).join('\n\n---\n\n')
     .replaceAll('$HOME/.claude/skills/gstack', ROOT)
     .replaceAll('~/.claude/skills/gstack', ROOT);

@@ -1,4 +1,5 @@
 import type { TemplateContext } from '../types';
+import { isXum, generateXumPlanModeInfo, generateXumCompletionStatus } from '../xum';
 import { getHostConfig } from '../../../hosts/index';
 
 /**
@@ -24,6 +25,7 @@ import { getHostConfig } from '../../../hosts/index';
  * so the section renders empty for them (#3168).
  */
 export function generatePlanModeInfo(ctx: TemplateContext): string {
+  if (isXum(ctx)) return generateXumPlanModeInfo();
   if (!getHostConfig(ctx.host).capabilities.planMode) return '';
   if (ctx.planMode === false) return '';
   const entryOrder = ctx.skillName === 'plan-eng-review'
@@ -42,6 +44,7 @@ ${invocation}`;
 }
 
 export function generateCompletionStatus(ctx: TemplateContext): string {
+  if (isXum(ctx)) return generateXumCompletionStatus();
   return `## Completion Status Protocol
 
 When completing a skill workflow, report status using one of:

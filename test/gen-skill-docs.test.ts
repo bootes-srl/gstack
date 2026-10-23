@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { spawnSync } from 'child_process';
+import { readDesignReviewFixture } from './helpers/skill-fixture';
 import { runCapturedCommand } from './helpers/sync-command-capture';
 import { between, expectAbsent, expectMentions, expectOrdered, expectTokens } from './helpers/prompt-structure';
 
@@ -2246,7 +2247,8 @@ describe('preamble routing injection (bin/gstack-skill-start emission layer)', (
   // renders is pinned by test/onboarding-moved-literals.test.ts (tombstone);
   // this suite pins the gate structure and the emitted block's content.
   const routingBlock = (() => {
-    const start = SKILL_START_SCRIPT.indexOf('_emit_block routing-injection');
+    // Select the legacy branch explicitly; Xum has its own behavioral fixture.
+    const start = SKILL_START_SCRIPT.indexOf("sed \"s|__BIN__|$_BIN|g\" <<'EOI' | _emit_block routing-injection");
     expect(start).toBeGreaterThan(0);
     return SKILL_START_SCRIPT.slice(start, SKILL_START_SCRIPT.indexOf('\nEOI', start));
   })();
@@ -2400,7 +2402,7 @@ describe('DESIGN_HARD_RULES resolver', () => {
   });
 
   test('design-review contains hard rules', () => {
-    const content = fs.readFileSync(path.join(ROOT, 'design-review', 'SKILL.md'), 'utf-8');
+    const content = readDesignReviewFixture(path.join(ROOT, 'design-review'));
     expect(content).toContain('Design Hard Rules');
   });
 
@@ -2460,7 +2462,7 @@ describe('DESIGN_HARD_RULES resolver', () => {
   });
 
   test('design-review renders the catalog once: Methodology category 9 carries it, Hard Rules points at it', () => {
-    const content = fs.readFileSync(path.join(ROOT, 'design-review', 'SKILL.md'), 'utf-8');
+    const content = readDesignReviewFixture(path.join(ROOT, 'design-review'));
     expect(content.split('### Design Hard Rules').length - 1).toBe(1);
     // Category 9 lists the rule once (ids only); Typography points at the same id from its overused-face item.
     expect(content.split('[overused-font]').length - 1).toBe(2);
@@ -2631,7 +2633,7 @@ describe('Design approval reconciliation', () => {
 // --- {{DESIGN_DETECTOR}} resolver tests ---
 
 describe('DESIGN_DETECTOR resolver', () => {
-  const designReview = () => fs.readFileSync(path.join(ROOT, 'design-review', 'SKILL.md'), 'utf-8');
+  const designReview = () => readDesignReviewFixture(path.join(ROOT, 'design-review'));
   const designHtml = () => fs.readFileSync(path.join(ROOT, 'design-html', 'SKILL.md'), 'utf-8');
   const bashBlocksOf = (content: string) => [...content.matchAll(/```bash\n([\s\S]*?)```/g)].map(m => m[1]);
 
@@ -3618,7 +3620,7 @@ describe('setup script validation', () => {
     expect(setupContent).toContain('--host');
     // #2361: slate moved OUT of the install accept-list (it was accepted but
     // never dispatched — a silent exit-0 no-op) into an informational arm.
-    expect(setupContent).toContain('claude|codex|kiro|factory|opencode|cursor|copilot|agy|auto');
+    expect(setupContent).toContain('claude|codex|kiro|factory|xum|opencode|cursor|copilot|agy|auto');
     expect(setupContent).toMatch(/^ {2}slate\)/m);
   });
 

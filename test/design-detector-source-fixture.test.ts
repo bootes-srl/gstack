@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { CAPTURE_MS, CAPTURE_LONG_MS } from './helpers/eval-budgets';
 import { installFakeImpeccable, DETECT_SAMPLE } from './helpers/fake-impeccable';
-import { sliceBetween } from './helpers/skill-fixture';
+import { sliceBetween, readDesignReviewFixture } from './helpers/skill-fixture';
 import { recordE2E } from './helpers/e2e-helpers';
 import { resolveEvalModel } from '../lib/eval-model';
 import captured from './fixtures/design-detector-source-public.json';
@@ -62,7 +62,7 @@ async function exercise(modes: Mode[], retention?: 'directory' | 'run-id' | 'bot
     process: { ...process, env: { ...process.env, ...env } }, resolveEvalModel,
     getProjectEvalDir: () => artifactRoot,
     console: { ...console, log: (...args: any[]) => notices.push(args.join(' ')), error: (...args: any[]) => notices.push(args.join(' ')) },
-    DETECT_SAMPLE, sliceBetween, runId: 'free-detector-replay', logCost: () => {}, recordE2E,
+    DETECT_SAMPLE, sliceBetween, readDesignReviewFixture, runId: 'free-detector-replay', logCost: () => {}, recordE2E,
     evalCollector: { addTest(row: any) {
       expect(fs.readdirSync(scratch).some(name => name.startsWith('detector-source-evidence-'))).toBe(false);
       rows.push(row);

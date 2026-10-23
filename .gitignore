@@ -73,3 +73,6 @@ docs/throughput-*.json
 ios-qa/scripts/gen-accessors-tool/.build/
 ios-qa/scripts/gen-accessors-tool/Package.resolved
 .gstack/
+
+# Generated Xum skills only; do not hide intentional hooks/agents/config.
+/.xum/skills/

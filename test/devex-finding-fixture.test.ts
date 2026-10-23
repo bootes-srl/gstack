@@ -14,6 +14,8 @@ test('every host exposes the DX per-call rule before the pre-review audit and St
       && /(?:^|\/)gstack-plan-devex-review\/SKILL\.md$|^plan-devex-review\/SKILL\.md$/.test(artifact.relativePath));
     expect(skills.map(artifact => artifact.host).sort()).toEqual([...ALL_HOST_NAMES].sort());
     for (const artifact of skills) {
+      const nativeQuestion = (text: string) => artifact.host === 'xum'
+        ? text.replaceAll('AskUserQuestion', 'prose question (native question policy applies)') : text;
       const content = fs.readFileSync(path.join(outputRoot, artifact.relativePath), 'utf8');
       const audit = content.indexOf('## PRE-REVIEW SYSTEM AUDIT');
       expect(audit).toBeGreaterThan(0);
@@ -35,7 +37,7 @@ test('every host exposes the DX per-call rule before the pre-review audit and St
       expect(prerequisite).toBeLessThan(content.indexOf('### 0B. Empathy Narrative', persona));
       const beforeAudit = content.slice(0, audit);
       expect(beforeAudit).toContain('including Step 0 and outside voice');
-      expect(beforeAudit).toContain('One independent choice per AskUserQuestion call, never separate tabs');
+      expect(beforeAudit).toContain(nativeQuestion('One independent choice per AskUserQuestion call, never separate tabs'));
       // Claude loads the review section later; these evidence limits must also
       // govern Step 0's first journey questions on every host.
       const earlyEvidence = beforeAudit.replace(/\s+/g, ' ');
@@ -67,7 +69,7 @@ test('every host exposes the DX per-call rule before the pre-review audit and St
       expect(mode).toContain('Use the mode the user explicitly requested for this review.');
       expect(mode).toContain('skip the mode question and continue to 0F. Otherwise, ask below.');
       const sectionText = generated.artifacts.filter(item => item.kind === 'section'
-        && item.host === artifact.host && item.relativePath.startsWith('plan-devex-review/'))
+        && item.host === artifact.host && item.relativePath.startsWith(path.dirname(artifact.relativePath) + '/'))
         .map(item => fs.readFileSync(path.join(outputRoot, item.relativePath), 'utf8')).join('\n');
       const allContent = content + '\n' + sectionText;
       expect(allContent).toContain('if viable, split them before asking');
@@ -91,7 +93,7 @@ test('every host exposes the DX per-call rule before the pre-review audit and St
       const benchmark = content.slice(content.indexOf('### 0C. Competitive DX Benchmarking'),
         content.indexOf('### 0D. Magical Moment Design'));
       expect(benchmark.indexOf('Define the clock before comparing')).toBeGreaterThanOrEqual(0);
-      expect(benchmark.indexOf('Define the clock before comparing')).toBeLessThan(benchmark.indexOf('AskUserQuestion:'));
+      expect(benchmark.indexOf('Define the clock before comparing')).toBeLessThan(benchmark.indexOf(nativeQuestion('AskUserQuestion:')));
       expect(benchmark).toContain('Compare times only across equivalent boundaries');
       expect(benchmark).toContain('Never infer no wait from a peer');
       expect(benchmark).toContain('Start → result');

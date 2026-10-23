@@ -55,7 +55,13 @@ test('other skills keep their existing preamble entry and plan-mode starting poi
   for (const host of ALL_HOST_CONFIGS) for (const skill of ['plan-ceo-review', 'plan-devex-review', 'ship', 'review']) {
     const ctx = context(skill, host);
     expect(generatePreambleBash(ctx).startsWith('## Preamble (run first)\n\n```bash')).toBe(true);
-    if (host.capabilities.planMode) expect(generatePlanModeInfo(ctx)).toContain('starting from Step 0;');
+    if (host.name === 'xum') {
+      const info = generatePlanModeInfo(ctx);
+      expect(info).toContain('exact plan file supplied');
+      expect(info).toContain('Explore');
+      expect(info).toContain('propose_plan');
+      expect(info).not.toContain('PLAN MODE EXCEPTION');
+    } else if (host.capabilities.planMode) expect(generatePlanModeInfo(ctx)).toContain('starting from Step 0;');
     else expect(generatePlanModeInfo(ctx)).toBe('');
     expect(generatePreambleBash(ctx)).not.toContain('Before the command below');
   }

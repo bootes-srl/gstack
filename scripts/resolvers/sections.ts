@@ -33,7 +33,7 @@ const CARVED_ON_EVERY_HOST = ['qa', 'qa-only', 'ship', 'plan-ceo-review', 'offic
 export const SKILL_BYTE_CEILING = 160_000;
 
 export function usesLazySections(host: Host, skill: string): boolean {
-  return host === 'claude' || CARVED_ON_EVERY_HOST.includes(skill);
+  return host === 'claude' || host === 'xum' || CARVED_ON_EVERY_HOST.includes(skill);
 }
 
 /**

@@ -144,6 +144,33 @@ describe('gstack-skill-start contract', () => {
 });
 
 describe('gstack-skill-start behavior', () => {
+  test('Xum onboarding preserves consent, native routing and user opt-outs', () => {
+    const state = fs.mkdtempSync(path.join(os.tmpdir(), 'gstack-xum-routing-'));
+    const config = 'update_check: false\nrouting_declined: false\n';
+    fs.writeFileSync(path.join(state, 'config.yaml'), config);
+    fs.writeFileSync(path.join(state, '.proactive-prompted'), '');
+    const env = { GSTACK_HOME: state, GSTACK_LEASE_DIR: path.join(state, 'leases'), GSTACK_ACTIVE_HOST: 'xum' };
+    try {
+      const out = runStart([], env);
+      const block = out.split('GSTACK_INSTRUCTION_BEGIN: routing-injection')[1]?.split('GSTACK_INSTRUCTION_END')[0] ?? '';
+      expect(block).toContain('AGENTS.md');
+      expect(block).toContain('agent_skill_read');
+      expect(block).toContain('/gstack-review');
+      expect(block).toContain('not consent');
+      expect(block).not.toContain('AskUserQuestion');
+      expect(block).not.toContain('CLAUDE.md');
+      expect(fs.existsSync(path.join(tmpHome, 'AGENTS.md'))).toBe(false);
+      fs.writeFileSync(path.join(state, 'config.yaml'), 'update_check: false\nrouting_declined: true\n');
+      expect(runStart([], env)).not.toContain('GSTACK_INSTRUCTION_BEGIN: routing-injection');
+      fs.writeFileSync(path.join(state, 'config.yaml'), config);
+      fs.writeFileSync(path.join(tmpHome, 'AGENTS.md'), '# User instructions\n## Skill routing\nKeep mine.\n');
+      expect(runStart([], env)).not.toContain('GSTACK_INSTRUCTION_BEGIN: routing-injection');
+      expect(fs.readFileSync(path.join(tmpHome, 'AGENTS.md'), 'utf8')).toContain('Keep mine.');
+    } finally {
+      fs.rmSync(path.join(tmpHome, 'AGENTS.md'), { force: true });
+      fs.rmSync(state, { recursive: true, force: true });
+    }
+  });
   for (const legacy of [false, true]) {
     test(`checkpoint commits stay retired with ${legacy ? 'legacy opt-in' : 'fresh'} state`, () => {
       const state = fs.mkdtempSync(path.join(os.tmpdir(), 'gstack-ss-retired-'));

@@ -107,7 +107,11 @@ beforeAll(async () => {
   for (const config of ALL_HOST_CONFIGS) {
     const base = config.name === 'claude' ? renders : join(renders, config.hostSubdir, 'skills');
     const upgradePath = config.name === 'claude' ? join(base, 'gstack-upgrade', 'SKILL.md') : join(base, 'gstack-upgrade', 'SKILL.md');
-    const specPath = config.name === 'claude' ? join(base, 'spec', 'sections', 'gate-and-file.md') : join(base, 'gstack-spec', 'SKILL.md');
+    const specDir = join(base, config.name === 'claude' ? 'spec' : 'gstack-spec');
+    const specMain = readFileSync(join(specDir, 'SKILL.md'), 'utf8');
+    const lazySpec = join(specDir, 'sections', 'gate-and-file.md');
+    if (existsSync(lazySpec)) expect(specMain).toContain('sections/gate-and-file.md');
+    const specPath = existsSync(lazySpec) ? lazySpec : join(specDir, 'SKILL.md');
     const upgrade = bashFences(readFileSync(upgradePath, 'utf8'));
     const spec = bashFences(readFileSync(specPath, 'utf8'));
     const team = fence(upgrade, 'git rm -r --cached');

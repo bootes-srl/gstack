@@ -285,6 +285,26 @@ export function sliceBetween(text: string, start: string, end: string): string {
   return text.slice(i, j);
 }
 
+/** Reconstruct design-review in authored order before taking detector slices.
+ * The baseline STOP replaces an inline block, not an appendix: appending the
+ * section would put the DOM dump after Phase 7 and break range boundaries.
+ * External hosts that inline the baseline already have the complete source.
+ */
+export function readDesignReviewFixture(skillDir: string): string {
+  const skeleton = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
+  const stop = /^> \*\*STOP\.\*\* Before running Phases 1-6 of the design audit baseline, Read [^\n]+ and execute it\n> in full\. Do not work from memory — that section is the source of truth for this step\.$/gm;
+  const pointers = [...skeleton.matchAll(stop)];
+  if (!pointers.length) {
+    if (!skeleton.includes('## Phase 3: Page-by-Page Visual Audit')) {
+      throw new Error('design-review fixture: neither baseline STOP nor inline baseline found');
+    }
+    return skeleton;
+  }
+  if (pointers.length !== 1) throw new Error('design-review fixture: expected exactly one baseline STOP');
+  const baseline = fs.readFileSync(path.join(skillDir, 'sections/baseline.md'), 'utf8');
+  return skeleton.replace(stop, () => baseline.trimEnd());
+}
+
 export function extractDesignResearchContract(skill: string): string {
   const setup = sliceBetween(skill, '## BROWSER SETUP', '### Rules for driving a real browser');
   const probe = setup.match(/```bash\n[\s\S]*?\n```/)?.[0];

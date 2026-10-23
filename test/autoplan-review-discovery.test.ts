@@ -104,9 +104,9 @@ describe('autoplan reads installed host methodology', () => {
           const carved = fs.existsSync(sectionSource);
           if (host.name === 'codex') expect(loaded + (carved ? fs.readFileSync(sectionSource, 'utf8') : '')).toContain('"outside_provider":"claude-code"');
           const phase = review === 'plan-devex-review' ? 'dx' : review.split('-')[1]!;
-          const phaseBody = host.name === 'claude'
-            ? fs.readFileSync(path.join(generatedRoot, 'autoplan', 'sections', `${phase}-phase.md`), 'utf8')
-            : body;
+          const phaseFile = path.join(path.dirname(generatedEntry), 'sections', `${phase}-phase.md`);
+          if (fs.existsSync(phaseFile)) expect(body).toContain(`sections/${phase}-phase.md`);
+          const phaseBody = fs.existsSync(phaseFile) ? fs.readFileSync(phaseFile, 'utf8') : body;
           const directive = phaseBody.split('\n').find(line => line.startsWith('Before dispatch, Read ')
             && (line.includes(`methodology ${phase} `) || line.includes(`/${review}/SKILL.md`) || line.includes(`/gstack-${review}/SKILL.md`)));
           expect(directive).toBeDefined();

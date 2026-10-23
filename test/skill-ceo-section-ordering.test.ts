@@ -223,10 +223,24 @@ test('CEO chat storage still supplies both spec inputs and the full report witho
     const outside = generateCodexPlanReview(ctx);
     if (outside) expectMentions(compactProse(outside), [['include', 'ceo scope summary']], 'outside voice');
     const gate = compactProse(generateExitPlanModeGate(ctx));
-    expectMentions(gate, [['do not','exitplanmode','checks']], 'gate');
-    ordered(gate, [/missing plan\/report saves/i, '1. Read the plan file']);
-    expectMentions(gate, [['no','forbidden','attempted']], 'gate');
-    expect(gate).toContain('**Gate outcome: Blocked**');
+    if (host.name === 'xum') {
+      // Native Plan and Exec have distinct storage/tool contracts, not Claude's exit gate.
+      expect(gate).toContain('**In Plan:**');
+      expect(gate).toContain('exact runtime-provided plan path');
+      expect(gate).toContain('**In Exec:**');
+      expect(gate).toContain('explicitly selected and authorized report destination');
+      expect(gate).toContain('Read back the saved report');
+      expect(gate).toContain('missing required answers block readiness');
+      expect(gate).toContain('missing required save is BLOCKED');
+      expect(gate).toContain('never saved-review credit from chat alone');
+      expect(gate).toContain('Plan forbids review-log/telemetry writes');
+      expect(gate).toContain('propose_plan only when exposed and permitted');
+    } else {
+      expectMentions(gate, [['do not','exitplanmode','checks']], 'gate');
+      ordered(gate, [/missing plan\/report saves/i, '1. Read the plan file']);
+      expectMentions(gate, [['no','forbidden','attempted']], 'gate');
+      expect(gate).toContain('**Gate outcome: Blocked**');
+    }
   }
 });
 

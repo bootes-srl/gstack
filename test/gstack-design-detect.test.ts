@@ -14,6 +14,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import { spawnSync, spawn } from 'child_process';
 import { SENTINEL, DETECT_LIMITS, UNTRUSTED_BEGIN, UNTRUSTED_END, ENGINE_ASSETS, ENGINE_PINS, TESTED_ENGINE_VERSIONS } from '../lib/design-detect-contract';
+import { readDesignReviewFixture } from './helpers/skill-fixture';
 import { installFakeImpeccable, DETECT_SAMPLE as SAMPLE } from './helpers/fake-impeccable';
 
 const ROOT = path.join(import.meta.dir, '..');
@@ -1147,7 +1148,7 @@ describe('coverage: scan edges', () => {
   });
 
   test.skipIf(!POSIX)('the rendered persist block refuses a dump with a HIGH redaction finding (DOM_DUMP_REDACTION_BLOCKED) and keeps a clean one', () => {
-    const skill = fs.readFileSync(path.join(ROOT, 'design-review', 'SKILL.md'), 'utf-8');
+    const skill = readDesignReviewFixture(path.join(ROOT, 'design-review'));
     const start = skill.indexOf('_D="<ASIDE_DIR or $_TMP>/{page}.dom.html"; _REPORT="<REPORT_DIR from Setup>"');
     const end = skill.indexOf('```', start);
     expect(start).toBeGreaterThan(0);

@@ -182,7 +182,7 @@ gstack_install_render_for() {
 gstack_host_tier() {
   case "$1" in
     claude) echo full ;;
-    codex|kiro|factory|opencode|cursor|copilot|agy) echo experimental ;;
+    codex|kiro|factory|xum|opencode|cursor|copilot|agy) echo experimental ;;
     slate|openclaw|hermes|gbrain) echo instruction-only ;;
     *) echo unknown ;;
   esac
@@ -250,6 +250,7 @@ gstack_install_known_roots() {
   printf 'codex\tglobal\t%s\t%s\n' "$codex_dir" "$codex_dir/gstack"
   printf 'kiro\tglobal\t%s\t%s\n' "$HOME/.kiro/skills" "$HOME/.kiro/skills/gstack"
   printf 'factory\tglobal\t%s\t%s\n' "$HOME/.factory/skills" "$HOME/.factory/skills/gstack"
+  printf 'xum\tglobal\t%s\t%s\n' "$HOME/.xum/skills" "$HOME/.xum/skills/gstack"
   printf 'opencode\tglobal\t%s\t%s\n' "$HOME/.config/opencode/skills" "$HOME/.config/opencode/skills/gstack"
   printf 'cursor\tglobal\t%s\t%s\n' "$HOME/.cursor/skills" "$HOME/.cursor/skills/gstack"
   printf 'copilot\tglobal\t%s\t%s\n' "$HOME/.copilot/skills" "$HOME/.copilot/skills/gstack"
