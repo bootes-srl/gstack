@@ -272,7 +272,16 @@ describe('plan report persistence precedes completion logging', () => {
         const content = readFileSync(join(outputRoot, carrier.relativePath), 'utf8');
         if (carrier.relativePath.includes('plan-eng-review/')) {
           const dispatch = compactProse(content.slice(content.indexOf('**Pending-record checkpoint.**'), content.indexOf('## Scope Challenge')));
-          ordered(dispatch, ['AskUserQuestion({ questions: [currentDecision] })', /stop until the actual answer arrives/i, '### Record the answer', 'For the next choice']);
+          const send = carrier.host === 'xum'
+            ? 'prose question (native question policy applies)({ questions: [currentDecision] })'
+            : 'AskUserQuestion({ questions: [currentDecision] })';
+          ordered(dispatch, [send, /stop until the actual answer arrives/i, '### Record the answer', 'For the next choice']);
+          if (carrier.host === 'xum') {
+            // Native prose preserves the actual-answer boundary; it is not tool consent.
+            expect(content).toContain('silence or a failed call is never consent');
+            expect(content).toContain('headless/sub-agents report');
+            expect(content).toContain('BLOCKED/incomplete');
+          }
         }
         const report = content.indexOf('\n## Plan File Review Report\n');
         const readback = content.indexOf('**Read-back gate:**', report);

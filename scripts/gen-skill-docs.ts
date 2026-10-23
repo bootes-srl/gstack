@@ -24,6 +24,7 @@ import type { Host, TemplateContext } from './resolvers/types';
 import { HOST_PATHS } from './resolvers/types';
 import { RESOLVERS } from './resolvers/index';
 import { rewriteCarvedSectionRefs, SKILL_BYTE_CEILING, usesLazySections } from './resolvers/sections';
+import { adaptXumWorkflow } from './resolvers/xum';
 import { insertRuntimePreludes } from './resolvers/runtime-root';
 import { extractVoiceTriggers } from './resolvers/voice-triggers';
 import { ALL_HOST_NAMES, resolveHostArg, getHostConfig } from '../hosts/index';
@@ -833,6 +834,7 @@ function processTemplate(tmplPath: string, host: Host, options: RenderOptions): 
   // --out-dir: repoint section-base paths to the out-dir (no-op otherwise).
   if (host === 'claude') content = rewriteSectionBase(content, options.contentLinkRoot);
   if (skillDir === '' || skillDir === '.') content = omitDisabledSkills(content, options.disabledSkills);
+  content = adaptXumWorkflow(content, ctx);
   content = rewriteInstallRoot(insertRuntimePreludes(rewriteCarvedSectionRefs(content, ctx), ctx), currentHostConfig, options.installRoot);
 
   return { outputPath, content, symlinkLoop, metadata };
@@ -888,7 +890,9 @@ function processSectionTemplate(
     // repoint those to the out-dir too (no-op when --out-dir is unset).
     content = rewriteSectionBase(content, options.contentLinkRoot);
   }
+  content = adaptXumWorkflow(content, ctx);
   content = rewriteInstallRoot(insertRuntimePreludes(rewriteCarvedSectionRefs(content, ctx), ctx), hostConfig, options.installRoot);
+
 
   // Plain generated header (no frontmatter to insert after).
   content = GENERATED_HEADER.replace('{{SOURCE}}', path.basename(sectionTmplPath)) + content;
@@ -1019,6 +1023,8 @@ export async function runGeneration(settings: GenerationOptions = {}): Promise<G
 
       for (const section of sections) {
         if (!includesSkill(hostConfig, section.skillDir) || !usesLazySections(host, section.skillDir)) continue;
+        // design-review's baseline is a Xum-only lazy asset, not a universal carve.
+        if (section.skillDir === 'design-review' && host !== 'xum') continue;
         const result = processSectionTemplate(path.join(ROOT, section.tmpl), section.skillDir, host, options);
         emit(result.outputPath, result.content, 'section', host);
         tokenBudget.push({ skill: rel(result.outputPath), lines: result.content.split('\n').length, tokens: Math.round(result.content.length / 4) });

@@ -17,7 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'node:os';
 import { prepareMethodology, createSnapshot, preparePhaseClose } from '../bin/gstack-autoplan-snapshot';
-import { SECTION } from '../scripts/resolvers/sections';
+import { SECTION, usesLazySections } from '../scripts/resolvers/sections';
 import { HOST_PATHS, type TemplateContext } from '../scripts/resolvers/types';
 import { ALL_HOST_CONFIGS } from '../hosts';
 import { expectMentions } from './helpers/prompt-structure';
@@ -383,16 +383,18 @@ describe('phase-close control ownership across installed hosts', () => {
     const ctx = {host: host.name, paths: HOST_PATHS[host.name], skillName: 'autoplan', tmplPath: ''} as TemplateContext;
     const rendered = SECTION(ctx, ['phase-close']);
     const template = read('autoplan/sections/phase-close.md.tmpl').trimEnd();
-    if (host.name === 'claude') {
-      expect(rendered).toContain(`${ctx.paths.skillRoot}/autoplan/sections/phase-close.md`);
+    if (usesLazySections(host.name, 'autoplan')) {
+      expect(rendered).toContain(host.name === 'claude' ? `${ctx.paths.skillRoot}/autoplan/sections/phase-close.md` : 'sections/phase-close.md');
       expect(rendered).toContain('and execute it');
     } else {
       expect(rendered).toBe(template);
-      ordered(rendered, ['4. **Read the complete current packet.**', '5. **Verify the current implementation.**',
-        '6. **Publish the parent report.**', '7. **Return to the driver.**']);
-      expect(rendered).toMatch(/in the same turn/i);
-      expectMentions(rendered, [['do not', 'continue', 'reply']], 'rendered');
-      expect(rendered).not.toContain('The packet owns the close continuation');
     }
+    // Lazy readers load this exact authored procedure; do not reduce coverage to a pointer.
+    const procedure = usesLazySections(host.name, 'autoplan') ? template : rendered;
+    ordered(procedure, ['4. **Read the complete current packet.**', '5. **Verify the current implementation.**',
+      '6. **Publish the parent report.**', '7. **Return to the driver.**']);
+    expect(procedure).toMatch(/in the same turn/i);
+    expectMentions(procedure, [['do not', 'continue', 'reply']], 'rendered');
+    expect(procedure).not.toContain('The packet owns the close continuation');
   });
 });

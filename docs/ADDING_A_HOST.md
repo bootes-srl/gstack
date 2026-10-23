@@ -2,7 +2,7 @@
 
 gstack uses a declarative host config system. Each supported AI coding agent
 (Claude, Codex, Factory, Kiro, OpenCode, Slate, Cursor, OpenClaw, Hermes,
-GBrain, Copilot, Antigravity) is defined as a typed TypeScript config object built by the
+GBrain, Copilot, Antigravity, Xum) is defined as a typed TypeScript config object built by the
 `defineHost()` factory. Rendering a new host means creating one file and
 re-exporting it: the generator, tests, and validation pick it up. Installing
 it is not free: setup still has one install arm per installable host (see
@@ -76,13 +76,13 @@ Inventory of every setup side effect, by phase (line numbers are approximate):
 |---|---|---|
 | Build | `browse/dist`, `design/dist`, `make-pdf/dist`, `bin/gstack-cso-*` in the source checkout | source |
 | Hosts record | `.gstack-installed-hosts` in the source checkout: every host setup installed from it, additive (#1694) | source |
-| Generation | renders for the recorded hosts only (`.agents/`, `.kiro/`, `.factory/`, `.opencode/`, `.cursor/`, `.copilot/`, `.agy/`) in the source checkout; `gstack-patch-names` rewrites Claude `name:` fields in place | source |
+| Generation | renders for the recorded hosts only (`.agents/`, `.kiro/`, `.factory/`, `.opencode/`, `.cursor/`, `.copilot/`, `.agy/`, `.xum/skills/`) in the source checkout; `gstack-patch-names` rewrites Claude `name:` fields in place | source |
 | Render prune | renders of hosts the record does not name: links into the checkout removed, generated files moved to `$GSTACK_STATE_ROOT/backups/host-renders/<ts>-<id>/`, other files kept | source / state root |
 | Chromium | Playwright cache (`~/.cache/ms-playwright`), lock under the state root | machine |
 | Config | `skill_prefix`, `timeline_stop_hook`, team-mode keys in `$GSTACK_STATE_ROOT/config.yaml` | state root |
 | Claude arm | `~/.claude/skills/gstack` link, one dir per skill with a `SKILL.md` link, alias copies | selected host |
 | Codex arm | `${CODEX_HOME:-~/.codex}/skills/gstack` runtime root, `gstack-*` links into `.agents/skills`, `.agents/skills/gstack` sidecar | selected host |
-| Kiro, Factory, OpenCode, Cursor, Copilot, Antigravity arms | the host's `skills/gstack` runtime root (built beside the live one and swapped in) and `gstack-*` links | selected host |
+| Kiro, Factory, OpenCode, Cursor, Copilot, Antigravity, Xum arms | the host's `skills/gstack` runtime root (built beside the live one and swapped in) and `gstack-*` links | selected host |
 | OpenCode commands | `~/.config/opencode/commands/gstack-*.md` with a managed marker (#2629); user command files are never touched | selected host |
 | Registry | one row per activated install in `installs.tsv` | state root |
 | Migrations | whatever each `v*.sh` repairs; marker in the state root | state root |
@@ -470,3 +470,20 @@ The `validateHostConfig()` function in `scripts/host-config.ts` checks:
 - No duplicate names, hostSubdirs, or globalRoots across configs
 
 Run `bun run scripts/host-config-export.ts validate` to check all configs.
+
+## Xum host contract
+
+`hosts/xum.ts` is the canonical Xum adapter; `mux` resolves to `xum`, not a second
+render tree. The generated discovery tree is `.xum/skills/gstack-*`; the runtime
+root is `.xum/skills/gstack`. Do not conflate these paths: runtime helpers expect
+`$GSTACK_ROOT/bin`, while Xum requires each discoverable skill's frontmatter name
+to equal its directory name. Descriptions are limited to 1,024 characters.
+
+Xum has native Plan mode, but it is not Claude's plan-mode permission model:
+only the runtime-provided plan file may be edited. State/artifact writes,
+setup and implementation are Exec work. Questions are conditionally native;
+`questions: prose` does not promise a blocking question tool in Exec/headless
+runs. Safety is advisory until an independently validated, user-owned hook
+integration exists. See [Xum workflow](XUM.md) for the verified contract and
+certification limitations. Preserve other hosts' render bytes when adapting
+host-specific preambles and gates.

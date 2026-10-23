@@ -103,6 +103,11 @@ export const RESOLVERS: Record<string, ResolverFn> = {
   QA_REVIEW: generateQAReview,
   QA_REVIEW_PREFLIGHT: generateQAReviewPreflight,
   QA_METHOD_READS: generateQAMethodReads,
+  // Only Xum needs this baseline lazy. Other hosts retain the exact authored
+  // inline expansion and do not become globally carved skills.
+  DESIGN_REVIEW_BASELINE: (ctx) => ctx.host === 'xum'
+    ? '> **STOP.** Before running Phases 1-6 of the design audit baseline, Read `sections/baseline.md` relative to the installed `gstack-design-review` SKILL.md directory and execute it\n> in full. Do not work from memory — that section is the source of truth for this step.'
+    : '{{DESIGN_METHODOLOGY}}\n\n{{DESIGN_HARD_RULES}}',
   DESIGN_METHODOLOGY: generateDesignMethodology,
   DESIGN_HARD_RULES: generateDesignHardRules,
   OVERUSED_FONTS: generateOverusedFonts,

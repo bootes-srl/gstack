@@ -585,6 +585,25 @@ fi
 # is a quoted heredoc (markdown backticks must stay literal), so the resolved
 # bin path is substituted via sed on the __BIN__ placeholder.
 if [ "$_HAS_ROUTING" = "no" ] && [ "$_ROUTING_DECLINED" = "false" ] && [ "$_PROACTIVE_PROMPTED" = "yes" ]; then
+  if [ "${GSTACK_ACTIVE_HOST:-}" = "xum" ]; then
+    _emit_block routing-injection <<'EOI'
+Exec-only optional onboarding: if the user agrees, append a small `## Skill routing`
+section to AGENTS.md, preserving existing content. Never edit instructions in Plan.
+Use prose to ask when consent is required; unavailable or nonblocking questions are
+not consent. If declined, preserve the existing routing_declined preference.
+
+Suggested section:
+## Skill routing
+Load only skills in the current session via agent_skill_read. Use prefixed names:
+ideas → /gstack-office-hours; architecture → /gstack-plan-eng-review;
+bugs → /gstack-investigate; QA → /gstack-qa; code review → /gstack-review.
+Plan edits only the runtime-supplied plan file; implementation and artifacts wait
+for Exec. Browser tasks use gstack's Aside-first, bundled-browser fallback.
+A local-only request ends in local commits and validation: /gstack-ship normally
+pushes/opens a PR, so do not invoke it without that authorization.
+Do not commit onboarding unless that change and local commits are authorized.
+EOI
+  else
   sed "s|__BIN__|$_BIN|g" <<'EOI' | _emit_block routing-injection
 gstack works best when the project CLAUDE.md includes skill routing rules. If no CLAUDE.md exists in the project root, create it. Use AskUserQuestion:
 
@@ -615,6 +634,7 @@ Key routing rules:
 
 If B: run `__BIN__/gstack-config set routing_declined true` and say they can re-enable with `__BIN__/gstack-config set routing_declined false`. This only happens once per project.
 EOI
+  fi
 fi
 
 # Vendoring deprecation (interactive; slug-scoped marker).

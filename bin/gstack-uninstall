@@ -131,6 +131,7 @@ if [ "$FORCE" -eq 0 ]; then
   echo "This will remove gstack from your system:"
   { [ -d "$HOME/.claude/skills/gstack" ] || [ -L "$HOME/.claude/skills/gstack" ]; } && echo "  ~/.claude/skills/gstack (+ per-skill symlinks)"
   [ -d "$HOME/.codex/skills" ] && echo "  ~/.codex/skills/gstack*"
+  [ -d "$HOME/.xum/skills" ] && echo "  ~/.xum/skills/gstack* (managed assets only)"
   [ -d "$HOME/.factory/skills" ] && echo "  ~/.factory/skills/gstack*"
   [ -d "$HOME/.kiro/skills" ] && echo "  ~/.kiro/skills/gstack*"
   [ -d "$HOME/.cursor/skills" ] && echo "  ~/.cursor/skills/gstack*"
@@ -358,6 +359,45 @@ if [ -d "$CODEX_SKILLS" ]; then
     rm -rf "$_ITEM"
     REMOVED+=("codex/$(basename "$_ITEM")")
   done
+fi
+
+# ─── Remove Xum skills (mux uses this same canonical tree) ──────────────────
+# Discovery links must point into the recorded checkout's Xum render. The
+# runtime manifest proves each leaf independently: user additions and edits stay.
+XUM_SKILLS="$HOME/.xum/skills"
+XUM_ROOT="$XUM_SKILLS/gstack"
+_XUM_SOURCE="$(head -1 "$XUM_ROOT/.gstack-owned" 2>/dev/null || true)"
+if [ -n "$_XUM_SOURCE" ]; then
+  for _ITEM in "$XUM_SKILLS"/gstack-*; do
+    [ -L "$_ITEM" ] || continue
+    _TARGET="$(readlink "$_ITEM")"
+    case "$_TARGET" in
+      "$_XUM_SOURCE/.xum/skills/"*) rm -f "$_ITEM"; REMOVED+=("xum/${_ITEM##*/}") ;;
+    esac
+  done
+  if [ ! -L "$XUM_ROOT" ] && [ -f "$XUM_ROOT/.gstack-runtime-files" ]; then
+    while IFS='	' read -r _REL _PROOF; do
+      # Never permit an edited manifest to walk outside the runtime root.
+      case "$_REL" in ''|/*|../*|*/../*|*/..) continue ;; esac
+      _ITEM="$XUM_ROOT/$_REL"
+      # Verify every parent is a real directory, not a user replacement link.
+      _PARENT="${_ITEM%/*}"; _SAFE=1
+      while [ "$_PARENT" != "$XUM_ROOT" ]; do
+        [ -L "$_PARENT" ] && _SAFE=0
+        _PARENT="${_PARENT%/*}"
+      done
+      [ "$_SAFE" -eq 1 ] || continue
+      _ACTUAL=""
+      if [ -L "$_ITEM" ]; then _ACTUAL="link:$(readlink "$_ITEM")"
+      elif [ -f "$_ITEM" ]; then _ACTUAL="file:$(cksum < "$_ITEM")"; fi
+      [ "$_ACTUAL" = "$_PROOF" ] && rm -f "$_ITEM"
+    done < "$XUM_ROOT/.gstack-runtime-files"
+    rm -f "$XUM_ROOT/.gstack-runtime-files"
+    # Retained user files must not make registry reconciliation resurrect Xum.
+    ( GSTACK_STATE_ROOT="$RESOLVED_ROOT"; . "$(dirname "$0")/gstack-install-registry.sh"; gstack_install_registry_remove xum "$XUM_SKILLS" ) 2>/dev/null || true
+    find "$XUM_ROOT" -depth -type d -empty -exec rmdir {} \; 2>/dev/null || true
+    REMOVED+=("xum managed runtime assets (user files retained)")
+  fi
 fi
 
 # ─── Remove Factory Droid skills ────────────────────────────

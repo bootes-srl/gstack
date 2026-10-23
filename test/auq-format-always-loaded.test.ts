@@ -82,7 +82,10 @@ function discoverSkills(): Array<{ skill: string; skillMd: string; sectionsDir: 
       return {
         skill,
         skillMd: path.join(ROOT, skill, 'SKILL.md'),
-        sectionsDir: fs.existsSync(sectionsDir) ? sectionsDir : null,
+        // A host-only section template is not a carved Claude skill. Classify
+        // the actual generated payload; retain skeleton checks for every carve.
+        sectionsDir: fs.existsSync(sectionsDir)
+          && fs.readdirSync(sectionsDir).some(file => file.endsWith('.md')) ? sectionsDir : null,
       };
     });
 }

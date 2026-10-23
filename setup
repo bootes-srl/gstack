@@ -22,10 +22,11 @@ Usage: ./setup [options]
 Options:
   --host <name>     Install for one host. Default: claude. Hosts by tier:
                       full:             claude
-                      experimental:     codex, kiro, factory, opencode, cursor, copilot, agy
+                      experimental:     codex, kiro, factory, xum, opencode, cursor, copilot, agy
                       instruction-only: slate, openclaw, hermes, gbrain
                       auto:             every installed agent that setup detects
                     An explicit --host never changes another host's install.
+                    Compatibility alias: --host mux means --host xum.
   --global          Allow this checkout to replace an existing global install
                     (or register Codex globally from a project-vendored source).
   --prefix          Install skills with the gstack- prefix (e.g. /gstack-review).
@@ -205,7 +206,7 @@ _setup_unknown_option() {
 }
 while [ $# -gt 0 ]; do
   case "$1" in
-    --host) [ -z "$2" ] && echo "Missing value for --host (expected claude, codex, kiro, factory, opencode, cursor, copilot, agy, slate, openclaw, hermes, gbrain, or auto)" >&2 && exit 1; HOST="$2"; HOST_FLAG_SET=1; shift 2 ;;
+    --host) [ -z "$2" ] && echo "Missing value for --host (expected claude, codex, kiro, factory, xum, opencode, cursor, copilot, agy, slate, openclaw, hermes, gbrain, or auto)" >&2 && exit 1; HOST="$2"; HOST_FLAG_SET=1; shift 2 ;;
     --host=*) HOST="${1#--host=}"; HOST_FLAG_SET=1; shift ;;
     --model) [ -z "$2" ] && echo "Missing value for --model" >&2 && exit 1; MODEL_OVERRIDE="$2"; MODEL_OVERRIDE_SET=1; shift 2 ;;
     --model=*) MODEL_OVERRIDE="${1#--model=}"; MODEL_OVERRIDE_SET=1; shift ;;
@@ -247,9 +248,10 @@ print_instruction_tier() {
   echo ""
 }
 
+[ "$HOST" = "mux" ] && HOST="xum"  # Legacy product name, one canonical install tree
 [ "$HOST" = "antigravity" ] && HOST="agy"  # Antigravity CLI is named after its binary
 case "$HOST" in
-  claude|codex|kiro|factory|opencode|cursor|copilot|agy|auto) ;;
+  claude|codex|kiro|factory|xum|opencode|cursor|copilot|agy|auto) ;;
   slate)
     echo ""
     echo "Slate is not yet a first-class install target (docs/designs/SLATE_HOST.md —"
@@ -301,11 +303,18 @@ case "$HOST" in
     echo ""
     exit 0 ;;
   *)
-    echo "Unknown --host value: $HOST — nothing was installed or changed. Expected one of: claude (default), codex, kiro, factory, opencode, cursor, copilot, agy (alias antigravity), slate, openclaw, hermes, gbrain, or auto. Tiers: ./setup --help" >&2; exit 1 ;;
+    echo "Unknown --host value: $HOST — nothing was installed or changed. Expected one of: claude (default), codex, kiro, factory, xum, opencode, cursor, copilot, agy (alias antigravity), slate, openclaw, hermes, gbrain, or auto. Tiers: ./setup --help" >&2; exit 1 ;;
 esac
 
 # Bun versions come from one sourced file (floor and tested; E1).
 . "$(dirname "$0")/bin/gstack-bun-version.sh" 2>/dev/null || { echo "$0: bin/gstack-bun-version.sh is missing; nothing was installed or changed. Fix: reinstall gstack (git clone https://github.com/garrytan/gstack)" >&2; exit 1; }
+# Xum currently has only a global install contract. Never reinterpret --local
+# as a Claude install or silently write global state for a project request.
+if [ "$HOST" = xum ] && [ "$LOCAL_INSTALL" -eq 1 ]; then
+  echo "Error: --local is not supported for Xum; use ./setup --host xum --global. Nothing was installed or changed." >&2
+  exit 1
+fi
+
 if ! command -v bun >/dev/null 2>&1; then
   echo "Error: bun is required but not installed." >&2
   echo "Install with checksum verification:" >&2
@@ -573,6 +582,8 @@ CODEX_SKILLS="${CODEX_HOME:-$HOME/.codex}/skills"
 CODEX_GSTACK="$CODEX_SKILLS/gstack"
 FACTORY_SKILLS="$HOME/.factory/skills"
 FACTORY_GSTACK="$FACTORY_SKILLS/gstack"
+XUM_SKILLS="$HOME/.xum/skills"
+XUM_GSTACK="$XUM_SKILLS/gstack"
 OPENCODE_SKILLS="$HOME/.config/opencode/skills"
 OPENCODE_GSTACK="$OPENCODE_SKILLS/gstack"
 CURSOR_SKILLS="$HOME/.cursor/skills"
@@ -1409,6 +1420,7 @@ INSTALL_CLAUDE=0
 INSTALL_CODEX=0
 INSTALL_KIRO=0
 INSTALL_FACTORY=0
+INSTALL_XUM=0
 INSTALL_OPENCODE=0
 INSTALL_CURSOR=0
 INSTALL_COPILOT=0
@@ -1418,6 +1430,7 @@ if [ "$HOST" = "auto" ]; then
   command -v codex >/dev/null 2>&1 && INSTALL_CODEX=1
   command -v kiro-cli >/dev/null 2>&1 && INSTALL_KIRO=1
   command -v droid >/dev/null 2>&1 && INSTALL_FACTORY=1
+  if command -v xum >/dev/null 2>&1 || command -v mux >/dev/null 2>&1; then INSTALL_XUM=1; fi
   command -v opencode >/dev/null 2>&1 && INSTALL_OPENCODE=1
   # Cursor's `cursor` CLI shim isn't always on PATH; ~/.cursor is the
   # reliable footprint of an installed Cursor IDE.
@@ -1430,7 +1443,7 @@ if [ "$HOST" = "auto" ]; then
   command -v agy >/dev/null 2>&1 && INSTALL_AGY=1
   [ -d "$HOME/.gemini/antigravity-cli" ] && INSTALL_AGY=1
   # If none found, default to claude
-  if [ "$INSTALL_CLAUDE" -eq 0 ] && [ "$INSTALL_CODEX" -eq 0 ] && [ "$INSTALL_KIRO" -eq 0 ] && [ "$INSTALL_FACTORY" -eq 0 ] && [ "$INSTALL_OPENCODE" -eq 0 ] && [ "$INSTALL_CURSOR" -eq 0 ] && [ "$INSTALL_COPILOT" -eq 0 ] && [ "$INSTALL_AGY" -eq 0 ]; then
+  if [ "$INSTALL_CLAUDE" -eq 0 ] && [ "$INSTALL_CODEX" -eq 0 ] && [ "$INSTALL_KIRO" -eq 0 ] && [ "$INSTALL_FACTORY" -eq 0 ] && [ "$INSTALL_XUM" -eq 0 ] && [ "$INSTALL_OPENCODE" -eq 0 ] && [ "$INSTALL_CURSOR" -eq 0 ] && [ "$INSTALL_COPILOT" -eq 0 ] && [ "$INSTALL_AGY" -eq 0 ]; then
     INSTALL_CLAUDE=1
   fi
 elif [ "$HOST" = "claude" ]; then
@@ -1439,6 +1452,8 @@ elif [ "$HOST" = "codex" ]; then
   INSTALL_CODEX=1
 elif [ "$HOST" = "kiro" ]; then
   INSTALL_KIRO=1
+elif [ "$HOST" = "xum" ]; then
+  INSTALL_XUM=1
 elif [ "$HOST" = "factory" ]; then
   INSTALL_FACTORY=1
 elif [ "$HOST" = "opencode" ]; then
@@ -1454,8 +1469,8 @@ fi
 # A host that passes --host validation but sets no INSTALL_* flag would
 # silently configure nothing and exit 0 (the #2361 slate failure class).
 # Fail loudly if a future host lands in the accept-list without a dispatch arm.
-if [ "$HOST" != "auto" ] && [ "$INSTALL_CLAUDE" -eq 0 ] && [ "$INSTALL_CODEX" -eq 0 ] && [ "$INSTALL_KIRO" -eq 0 ] && [ "$INSTALL_FACTORY" -eq 0 ] && [ "$INSTALL_OPENCODE" -eq 0 ] && [ "$INSTALL_CURSOR" -eq 0 ] && [ "$INSTALL_COPILOT" -eq 0 ] && [ "$INSTALL_AGY" -eq 0 ]; then
-  echo "Error: no install arm exists for host '$HOST' — it passed --host validation but sets no INSTALL_* flag, so setup would configure nothing and exit 0. This is a setup bug. Valid install targets: claude, codex, kiro, factory, opencode, cursor, copilot, agy (informational: slate, openclaw, hermes, gbrain)." >&2
+if [ "$HOST" != "auto" ] && [ "$INSTALL_CLAUDE" -eq 0 ] && [ "$INSTALL_CODEX" -eq 0 ] && [ "$INSTALL_KIRO" -eq 0 ] && [ "$INSTALL_FACTORY" -eq 0 ] && [ "$INSTALL_XUM" -eq 0 ] && [ "$INSTALL_OPENCODE" -eq 0 ] && [ "$INSTALL_CURSOR" -eq 0 ] && [ "$INSTALL_COPILOT" -eq 0 ] && [ "$INSTALL_AGY" -eq 0 ]; then
+  echo "Error: no install arm exists for host '$HOST' — it passed --host validation but sets no INSTALL_* flag, so setup would configure nothing and exit 0. This is a setup bug. Valid install targets: claude, codex, kiro, factory, xum, opencode, cursor, copilot, agy (informational: slate, openclaw, hermes, gbrain)." >&2
   exit 1
 fi
 
@@ -1478,7 +1493,7 @@ fi
 # Before anything is written: refuse a host whose runtime root is, or
 # contains, this checkout (#3084). _activate_runtime_root checks again; Kiro
 # writes into its root in place, so it is refused here too.
-for _rr in "$INSTALL_KIRO kiro $KIRO_SKILLS/gstack" "$INSTALL_FACTORY factory $FACTORY_GSTACK" "$INSTALL_OPENCODE opencode $OPENCODE_GSTACK" \
+for _rr in "$INSTALL_XUM xum $XUM_GSTACK" "$INSTALL_KIRO kiro $KIRO_SKILLS/gstack" "$INSTALL_FACTORY factory $FACTORY_GSTACK" "$INSTALL_OPENCODE opencode $OPENCODE_GSTACK" \
   "$INSTALL_CURSOR cursor $CURSOR_GSTACK" "$INSTALL_COPILOT copilot $COPILOT_GSTACK" "$INSTALL_AGY agy $AGY_GSTACK"; do
   [ "${_rr%% *}" -eq 1 ] || continue
   _rr=${_rr#* }
@@ -1855,6 +1870,7 @@ _RENDER_HOSTS_SELECTED=""
 [ "$INSTALL_CLAUDE" -eq 1 ] && _RENDER_HOSTS_SELECTED="$_RENDER_HOSTS_SELECTED claude"
 [ "$INSTALL_CODEX" -eq 1 ] && _RENDER_HOSTS_SELECTED="$_RENDER_HOSTS_SELECTED codex"
 [ "$INSTALL_KIRO" -eq 1 ] && _RENDER_HOSTS_SELECTED="$_RENDER_HOSTS_SELECTED kiro"
+[ "$INSTALL_XUM" -eq 1 ] && _RENDER_HOSTS_SELECTED="$_RENDER_HOSTS_SELECTED xum"
 [ "$INSTALL_FACTORY" -eq 1 ] && _RENDER_HOSTS_SELECTED="$_RENDER_HOSTS_SELECTED factory"
 [ "$INSTALL_OPENCODE" -eq 1 ] && _RENDER_HOSTS_SELECTED="$_RENDER_HOSTS_SELECTED opencode"
 [ "$INSTALL_CURSOR" -eq 1 ] && _RENDER_HOSTS_SELECTED="$_RENDER_HOSTS_SELECTED cursor"
@@ -2094,6 +2110,16 @@ if [ "$INSTALL_FACTORY" -eq 1 ] && { [ "$NEEDS_BUILD" -eq 0 ] || [ -n "$_PLAN_MO
     cd "$SOURCE_GSTACK_DIR"
     bun_cmd install --frozen-lockfile 2>/dev/null || bun_cmd install
     bun_cmd run gen:skill-docs --host factory ${_DISABLED_CSV:+"--disabled-skills=$_DISABLED_CSV"} ${_PLAN_MODE_ARG:+"$_PLAN_MODE_ARG"}
+  )
+fi
+
+# 1c-xum. Generate .xum/ Xum skill docs
+if [ "$INSTALL_XUM" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
+  log "Generating .xum/ skill docs..."
+  (
+    cd "$SOURCE_GSTACK_DIR"
+    bun_cmd install --frozen-lockfile 2>/dev/null || bun_cmd install
+    bun_cmd run gen:skill-docs --host xum ${_DISABLED_CSV:+"--disabled-skills=$_DISABLED_CSV"}
   )
 fi
 
@@ -2976,6 +3002,92 @@ create_factory_runtime_root() {
   fi
 }
 
+create_xum_runtime_root() {
+  local gstack_dir="$1"
+  local xum_gstack="$2"
+  local xum_dir="$gstack_dir/.xum/skills"
+
+  mkdir -p "$xum_gstack" "$xum_gstack/browse" "$xum_gstack/gstack-upgrade" "$xum_gstack/review"
+
+  if [ -f "$xum_dir/gstack/SKILL.md" ]; then
+    _copy_skill_md "$xum_dir/gstack/SKILL.md" "$xum_gstack/SKILL.md"
+  fi
+  if [ -d "$gstack_dir/bin" ]; then
+    _link_or_copy "$gstack_dir/bin" "$xum_gstack/bin"
+  fi
+  if [ -d "$gstack_dir/lib" ]; then
+    _link_or_copy "$gstack_dir/lib" "$xum_gstack/lib"
+  fi
+  if [ -d "$gstack_dir/browse/dist" ]; then
+    _link_or_copy "$gstack_dir/browse/dist" "$xum_gstack/browse/dist"
+  fi
+  if [ -d "$gstack_dir/browse/bin" ]; then
+    _link_or_copy "$gstack_dir/browse/bin" "$xum_gstack/browse/bin"
+  fi
+  _link_runtime_dists "$gstack_dir" "$xum_gstack"
+  if [ -f "$xum_dir/gstack-upgrade/SKILL.md" ]; then
+    _copy_skill_md "$xum_dir/gstack-upgrade/SKILL.md" "$xum_gstack/gstack-upgrade/SKILL.md"
+  fi
+  _copy_runtime_skill_refs "$xum_dir" "$xum_gstack"
+  if [ -f "$gstack_dir/ETHOS.md" ]; then
+    _link_or_copy "$gstack_dir/ETHOS.md" "$xum_gstack/ETHOS.md"
+  fi
+  # supabase/config.sh — required by gstack-telemetry-sync to resolve GSTACK_SUPABASE_URL
+  if [ -f "$gstack_dir/supabase/config.sh" ]; then
+    mkdir -p "$xum_gstack/supabase"
+    _link_or_copy "$gstack_dir/supabase/config.sh" "$xum_gstack/supabase/config.sh"
+  fi
+  # Only assets and selected references belong in this runtime tree, never
+  # source/generated skill trees that would be discovered a second time.
+  _write_owned_marker "$xum_gstack" "$gstack_dir"
+  # Record exact generated leaves before carrying additions into the staged root.
+  # Uninstall removes only unchanged leaves, retaining edits and user additions.
+  _xum_record_runtime_files "$xum_gstack"
+  _xum_preserve_extra_files "$XUM_GSTACK" "$xum_gstack"
+}
+
+_xum_record_runtime_files() {
+  local root="$1" e rel proof
+  while IFS= read -r e; do
+    rel="${e#"$root"/}"
+    [ "$rel" = .gstack-runtime-files ] && continue
+    if [ -L "$e" ]; then proof="link:$(readlink "$e")"; else proof="file:$(cksum < "$e")"; fi
+    printf '%s\t%s\n' "$rel" "$proof"
+  done <<EOF > "$root/.gstack-runtime-files"
+$(find "$root" \( -type f -o -type l \) -print)
+EOF
+}
+
+# Carry user additions forward during a staged refresh without following old
+# runtime symlinks (bin/lib point at the checkout, not at user-owned copies).
+_xum_preserve_extra_files() {
+  local old="$1" new="$2" e name expected actual rel
+  [ -d "$old" ] && [ ! -L "$old" ] || return 0
+  for e in "$old"/* "$old"/.[!.]* "$old"/..?*; do
+    [ -e "$e" ] || [ -L "$e" ] || continue
+    name="${e##*/}"
+    case "$name" in .gstack-owned|.gstack-runtime-files) continue ;; esac
+    if [ ! -e "$new/$name" ] && [ ! -L "$new/$name" ]; then
+      cp -R "$e" "$new/$name" || return 1
+    elif [ -d "$e" ] && [ ! -L "$e" ] && [ -d "$new/$name" ] && [ ! -L "$new/$name" ]; then
+      _xum_preserve_extra_files "$e" "$new/$name" || return 1
+    else
+      rel="${e#"$XUM_GSTACK"/}"
+      expected="$(awk -F '\t' -v p="$rel" '$1 == p { print $2 }' "$XUM_GSTACK/.gstack-runtime-files" 2>/dev/null || true)"
+      actual=""
+      if [ -L "$e" ]; then actual="link:$(readlink "$e")"
+      elif [ -f "$e" ]; then actual="file:$(cksum < "$e")"; fi
+      # A known unchanged managed leaf can refresh, including a type change
+      # in a newer release. Unknown/edited leaves and real-directory collisions
+      # must never be replaced or followed: fail the stage, keeping the old root.
+      if [ -z "$actual" ] || [ "$expected" != "$actual" ]; then
+        echo "  error: Xum runtime collision at $e; customized or unowned asset left unchanged" >&2
+        return 1
+      fi
+    fi
+  done
+}
+
 create_opencode_runtime_root() {
   local gstack_dir="$1"
   local opencode_gstack="$2"
@@ -3055,6 +3167,52 @@ link_factory_skill_dirs() {
       # (_owned_for_windows_refresh), never a user's own colliding dir.
       if [ "$IS_WINDOWS" -eq 1 ] || [ -L "$target" ] || [ ! -e "$target" ]; then
         if _owned_for_windows_refresh "$target"; then
+          _link_or_copy "$skill_dir" "$target"
+          linked+=("$skill_name")
+        else
+          echo "  left in place (existing dir not gstack-managed — no generated banner): $target" >&2
+        fi
+      fi
+    fi
+  done
+  if [ ${#linked[@]} -gt 0 ]; then
+    echo "  linked skills: ${linked[*]}"
+  fi
+}
+
+link_xum_skill_dirs() {
+  local gstack_dir="$1"
+  local skills_dir="$2"
+  local xum_dir="$gstack_dir/.xum/skills"
+  local linked=()
+
+  if [ ! -d "$xum_dir" ]; then
+    echo "  Generating .xum/ skill docs..."
+    ( cd "$gstack_dir" && bun_cmd run gen:skill-docs --host xum ${_DISABLED_CSV:+"--disabled-skills=$_DISABLED_CSV"} )
+  fi
+
+  if [ ! -d "$xum_dir" ]; then
+    echo "  warning: .xum/skills/ generation failed — run 'bun run gen:skill-docs --host xum' manually" >&2
+    return 1
+  fi
+
+  for skill_dir in "$xum_dir"/gstack*/; do
+    if [ -f "$skill_dir/SKILL.md" ]; then
+      skill_name="$(basename "$skill_dir")"
+      case "${_DISABLED_SKILLS:- }" in
+        *" ${skill_name#gstack-} "*)
+          if [ -L "$skills_dir/$skill_name" ]; then
+            case "$(_gstack_link_target_abs "$skills_dir/$skill_name")" in "$xum_dir"/*) rm -f "$skills_dir/$skill_name" ;; esac
+          fi
+          continue ;;
+      esac
+      [ "$skill_name" = "gstack" ] && continue
+      target="$skills_dir/$skill_name"
+      # Only links into this host's render are replaceable; a user's unrelated
+      # symlink or colliding real directory remains untouched.
+      if [ "$IS_WINDOWS" -eq 1 ] || [ -L "$target" ] || [ ! -e "$target" ]; then
+        if { [ ! -e "$target" ] && [ ! -L "$target" ]; } \
+          || { [ -L "$target" ] && case "$(_gstack_link_target_abs "$target")" in "$xum_dir"/*) true ;; *) false ;; esac; }; then
           _link_or_copy "$skill_dir" "$target"
           linked+=("$skill_name")
         else
@@ -3782,6 +3940,23 @@ if [ "$INSTALL_FACTORY" -eq 1 ]; then
   echo "  browse: $BROWSE_BIN"
   _browser_hint
   echo "  factory skills: $FACTORY_SKILLS"
+fi
+
+if [ "$INSTALL_XUM" -eq 1 ]; then
+  _setup_arm_begin xum global "$XUM_SKILLS"
+  if [ -L "$XUM_GSTACK" ] || { [ -e "$XUM_GSTACK" ] && [ ! -f "$XUM_GSTACK/.gstack-owned" ]; }; then
+    echo "Error: left in place (Xum runtime root not gstack-managed): $XUM_GSTACK" >&2
+    exit 1
+  fi
+  mkdir -p "$XUM_SKILLS"
+  _activate_runtime_root create_xum_runtime_root "$SOURCE_GSTACK_DIR" "$XUM_GSTACK"
+  _prune_stale_generated "$SOURCE_GSTACK_DIR" "$SOURCE_GSTACK_DIR/.xum/skills" "$XUM_SKILLS"
+  link_xum_skill_dirs "$SOURCE_GSTACK_DIR" "$XUM_SKILLS"
+  _setup_arm_publish xum global - "$XUM_SKILLS" "$XUM_GSTACK" -
+  echo "gstack ready (xum)."
+  echo "  browse: $BROWSE_BIN"
+  _browser_hint
+  echo "  xum skills: $XUM_SKILLS"
 fi
 
 # 6c. Install for OpenCode

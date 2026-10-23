@@ -37,6 +37,7 @@ const ROOT_BUILDERS: Record<string, string> = {
   cursor: 'create_cursor_runtime_root',
   copilot: 'create_copilot_runtime_root',
   agy: 'create_agy_runtime_root',
+  xum: 'create_xum_runtime_root',
 };
 
 // Deferred, with the reason recorded in TODOS.md: /ship's measure loop runs
@@ -100,9 +101,10 @@ function buildRoot(host: string): { root: string; stderr: string; status: number
   const root = path.join(tmp, 'home', host, 'skills', 'gstack');
   fs.mkdirSync(path.dirname(root), { recursive: true });
   const functions = ['_link_or_copy', '_link_runtime_dists', '_copy_runtime_skill_refs', '_copy_skill_md',
-    '_sidecar_root_user_owned', '_gstack_generated_header', ROOT_BUILDERS[host]!]
+    '_sidecar_root_user_owned', '_gstack_generated_header',
+    ...(host === 'xum' ? ['_write_owned_marker', '_xum_record_runtime_files', '_xum_preserve_extra_files'] : []), ROOT_BUILDERS[host]!]
     .filter(name => SETUP_SRC.includes(`\n${name}() {`)).map(extractFunction).join('\n');
-  const r = spawnSync('bash', ['-c', `set -e\nIS_WINDOWS=0\n${functions}\n${ROOT_BUILDERS[host]} "${src}" "${root}"`],
+  const r = spawnSync('bash', ['-c', `set -e\nIS_WINDOWS=0\nXUM_GSTACK="${root}"\n${functions}\n${ROOT_BUILDERS[host]} "${src}" "${root}"`],
     { encoding: 'utf8', timeout: 30_000, env: { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: path.join(tmp, 'home') } });
   return { root, stderr: r.stderr, status: r.status };
 }

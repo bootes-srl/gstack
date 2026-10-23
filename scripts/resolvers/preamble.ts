@@ -17,6 +17,7 @@
 
 
 import type { TemplateContext } from './types';
+import { isXum, generateXumBootstrap, generateXumCompletionStatus } from './xum';
 import { generateModelOverlay } from './model-overlay';
 import { generateQuestionTuning } from './question-tuning';
 
@@ -75,6 +76,12 @@ export function generatePreamble(ctx: TemplateContext): string {
   if (tier < 1 || tier > 4) {
     throw new Error(`Invalid preamble-tier: ${tier} in ${ctx.tmplPath}. Must be 1-4.`);
   }
+  if (isXum(ctx)) return [
+    generateXumBootstrap(ctx),
+    generateVoiceDirective(ctx, tier),
+    ...(tier >= 2 ? [generateConfusionProtocol(ctx), generateEvidenceDirective(ctx)] : []),
+    generateXumCompletionStatus(),
+  ].join('\n\n');
   const sections = [
     generatePreambleBash(ctx),
     ...(ctx.skillName === 'make-pdf' ? [generateMakePdfSetup(ctx)] : []),

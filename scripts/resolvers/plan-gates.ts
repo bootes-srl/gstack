@@ -5,10 +5,12 @@
  * Moved from scripts/resolvers/review.ts.
  */
 import { type TemplateContext } from './types';
+import { isXum, generateXumApprovalCheck, generateXumExitGate, generateXumPlanDiscovery } from './xum';
 import { undeclaredBehaviorLines } from './sideways';
 
 /** Approval readiness precedes output; the exit gate only verifies the saved result. */
 export function generatePlanReviewApprovalCheck(ctx: TemplateContext): string {
+  if (isXum(ctx)) return generateXumApprovalCheck();
   if (ctx.skillName === 'plan-eng-review') return `## Approval readiness
 
 Before Required outputs, check the ledger against every accepted remedy. Each
@@ -60,6 +62,7 @@ Required Outputs, preserving unresolved decisions in the report.`;
 }
 
 export function generateExitPlanModeGate(ctx: TemplateContext): string {
+  if (isXum(ctx)) return generateXumExitGate();
   if (ctx.skillName === 'plan-ceo-review') return `## EXIT PLAN MODE GATE (BLOCKING)
 
 Read-only verification: apply **Artifact outcomes**. Missing plan/report saves
@@ -602,13 +605,14 @@ export function generatePlanCompletionAuditShip(_ctx: TemplateContext): string {
 
 /** `{{PLAN_COMPLETION_GATE_SHIP:discovery}}` renders the parent-side plan binding that runs before dispatch; `:acceptance` the parent-side ACCEPTANCE_EDITED check that runs after the child reports. */
 export function generatePlanCompletionGateShip(_ctx: TemplateContext, args?: string[]): string {
-  if (args?.includes('discovery')) return generatePlanFileDiscovery(true);
+  if (args?.includes('discovery')) return isXum(_ctx) ? generateXumPlanDiscovery() : generatePlanFileDiscovery(true);
   if (args?.includes('acceptance')) return planAcceptanceEditedCheck();
   return generatePlanCompletionAuditInner('ship', 'gate');
 }
 
 export function generatePlanCompletionAuditReview(_ctx: TemplateContext): string {
-  return generatePlanCompletionAuditInner('review');
+  const result = generatePlanCompletionAuditInner('review');
+  return isXum(_ctx) ? result.replace(generatePlanFileDiscovery(false), generateXumPlanDiscovery()) : result;
 }
 
 // ─── Plan Verification Execution ──────────────────────────────────────

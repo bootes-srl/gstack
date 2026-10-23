@@ -2,6 +2,9 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { createHash } from 'node:crypto';
+import { readDesignReviewFixture } from './helpers/skill-fixture';
+import { RESOLVERS } from '../scripts/resolvers';
 import { ALL_HOST_CONFIGS } from '../hosts';
 import { runGeneration, type GenerationResult } from '../scripts/gen-skill-docs';
 import { discoverSectionTemplates } from '../scripts/discover-skills';
@@ -53,6 +56,39 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(() => fs.rmSync(owned, { recursive: true, force: true }));
+
+describe('Xum-only design baseline', () => {
+  test('non-Xum hosts retain the original inline expansion and Claude bytes', () => {
+    for (const host of ALL_HOST_CONFIGS.filter(host => host.name !== 'xum')) {
+      expect((RESOLVERS.DESIGN_REVIEW_BASELINE as Function)(context(host.name, 'design-review')))
+        .toBe('{{DESIGN_METHODOLOGY}}\n\n{{DESIGN_HARD_RULES}}');
+      const dir = host.name === 'claude' ? 'design-review' : `${host.hostSubdir}/skills/gstack-design-review`;
+      const text = fs.readFileSync(path.join(rendered, dir, 'SKILL.md'), 'utf8');
+      expect(text).toContain('## Phase 3: Page-by-Page Visual Audit');
+      expect(text).toContain('### Design Hard Rules');
+      expect(text).not.toContain('sections/baseline.md');
+      expect(generated.artifacts.some(a => a.relativePath === `${dir}/sections/baseline.md`)).toBe(false);
+      if (host.name === 'claude') expect(createHash('sha256').update(text).digest('hex'))
+        .toBe('76e7a6be46238bf244db2d5ec5b87ee108cbb72ca112c667d09452bdaded81a4');
+    }
+  });
+
+  test('Xum emits a complete baseline beside the entrypoint and expands it in authored order', () => {
+    const dir = path.join(rendered, '.xum/skills/gstack-design-review');
+    const root = fs.readFileSync(path.join(dir, 'SKILL.md'), 'utf8');
+    const baseline = fs.readFileSync(path.join(dir, 'sections/baseline.md'), 'utf8').trimEnd();
+    expect(Buffer.byteLength(root)).toBeLessThan(100_000);
+    expect(root).not.toContain('### Design Hard Rules');
+    const pointer = root.match(/^> \*\*STOP\.\*\* Before running Phases 1-6[^\n]+\n> in full[^\n]+/m)![0];
+    expect(pointer).toContain('relative to the installed `gstack-design-review` SKILL.md directory');
+    const [before, after] = root.split(pointer);
+    const full = readDesignReviewFixture(dir);
+    expect(full).toBe(before + baseline + after);
+    expect(full.indexOf('## Phase 3: Page-by-Page Visual Audit')).toBeLessThan(full.indexOf('## Phase 7: Triage'));
+    expect(full.split('### Design Hard Rules')).toHaveLength(2);
+    expect(generated.artifacts).toContainEqual({relativePath: '.xum/skills/gstack-design-review/sections/baseline.md', kind: 'section', host: 'xum'});
+  });
+});
 
 describe('QA-only cross-host lazy rendering', () => {
   test('Codex review defines omitted-Army records without waiving native or QA completion', () => {
@@ -163,7 +199,7 @@ describe('QA-only cross-host lazy rendering', () => {
       const outside = generated.artifacts.filter(artifact => artifact.host === host.name && artifact.kind === 'section'
         && !/^(?:qa|qa-only|ship|plan-ceo-review|office-hours)\//.test(artifact.relativePath)
         && !/\/gstack-(?:qa(?:-only)?|ship|plan-ceo-review|office-hours)\//.test(artifact.relativePath));
-      expect(outside.length > 0).toBe(host.name === 'claude');
+      expect(outside.length > 0).toBe(host.name === 'claude' || host.name === 'xum');
       // C4: ship is carved on every host; external pointers are relative to the installed skill.
       const ctx = context(host.name, 'ship');
       const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'ship/sections/manifest.json'), 'utf8'));
@@ -173,11 +209,15 @@ describe('QA-only cross-host lazy rendering', () => {
         ? `\`~/.claude/skills/gstack/ship/sections/${entry.file}\``
         : `\`sections/${entry.file}\` relative to the installed \`gstack-ship\` SKILL.md directory`;
       expect(SECTION(ctx, [entry.id])).toBe(`> **STOP.** Before ${entry.trigger}, Read ${pointer} and execute it\n> in full. Do not work from memory — that section is the source of truth for this step.`);
-      // Skills carved only on Claude still inline their sections elsewhere.
+      // Claude and Xum load all carved sections lazily; other hosts keep their policy.
       const reviewCtx = context(host.name, 'review');
       const reviewEntry = JSON.parse(fs.readFileSync(path.join(ROOT, 'review/sections/manifest.json'), 'utf8')).sections[0];
-      expect(usesLazySections(host.name, 'review')).toBe(host.name === 'claude');
-      if (host.name !== 'claude') {
+      expect(usesLazySections(host.name, 'review')).toBe(host.name === 'claude' || host.name === 'xum');
+      if (host.name === 'xum') {
+        expect(SECTION(reviewCtx, [reviewEntry.id])).toContain('sections/' + reviewEntry.file);
+        expect(SECTION(reviewCtx, [reviewEntry.id])).toContain('> **STOP.**');
+        expect(SECTION_INDEX(reviewCtx)).toContain('## Section index');
+      } else if (host.name !== 'claude') {
         expect(SECTION(reviewCtx, [reviewEntry.id])).toBe(fs.readFileSync(path.join(ROOT, 'review/sections', `${reviewEntry.file}.tmpl`), 'utf8').trimEnd());
         expect(SECTION_INDEX(reviewCtx)).toBe('');
       }

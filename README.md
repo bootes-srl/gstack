@@ -144,10 +144,17 @@ installs and passes the conformance tests but has no certification run yet;
 | Kiro | experimental | `--host kiro` → `~/.kiro/skills/gstack-*/` | ask for `gstack-office-hours` | advisory, not blocked | Codex CLI, signed in | `./setup --host kiro` |
 | GitHub Copilot CLI | experimental | `--host copilot` → `~/.copilot/skills/gstack-*/` | `/gstack-office-hours` | advisory, not blocked | Codex CLI, signed in | `./setup --host copilot` |
 | Antigravity CLI | experimental | `--host agy` (or `--host antigravity`) → `~/.gemini/antigravity-cli/skills/gstack-*/` | `/gstack-office-hours` | advisory, not blocked | Codex CLI, signed in | `./setup --host agy` |
+| Xum (Mux) | experimental | `--host xum` (or `--host mux`) → `~/.xum/skills/gstack-*/` | `/gstack-office-hours` | advisory, not blocked | optional Claude Code/Codex CLI, signed in | `./setup --host xum` |
 | Slate | instruction-only | `--host slate` (points at the Claude install; Slate reads `.claude/skills`) | `/office-hours` via the Claude install | advisory, not blocked | — | `./setup --host claude` |
 | OpenClaw | instruction-only | `--host openclaw` (prints the digest path; ACP spawns Claude Code — [docs/OPENCLAW.md](docs/OPENCLAW.md)) | "Load gstack. Run /review" | advisory, not blocked | — | re-copy the digest after upgrades |
 | Hermes | instruction-only | `--host hermes` (prints the digest path and `gen:skill-docs --host hermes`) | copy the digest, or render skills yourself | advisory, not blocked | — | re-copy the digest after upgrades |
 | GBrain (mod) | instruction-only | `--host gbrain` (brain-aware variants ship from the GBrain repo) | — | advisory, not blocked | — | — |
+
+Xum uses native Plan/Exec modes and prefixed skills. Its runtime assets live in
+`~/.xum/skills/gstack`, separate from the discoverable `gstack-*` siblings.
+Install globally with `./setup --host xum`; project-local installation is not
+supported. See [the integrated Xum workflow](docs/XUM.md) for mode boundaries,
+optional outside reviews, browser selection and a local-commit-only finish.
 
 Copilot invokes gstack skills by their prefixed names (`/gstack-review`) because
 `/review` is a Copilot built-in. Copilot ignores skill hooks, so `/careful` and
